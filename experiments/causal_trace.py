@@ -9,7 +9,7 @@ import torch
 from datasets import load_dataset
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from dsets import KnownsDataset
 from rome.tok_dataset import (
@@ -462,7 +462,7 @@ class ModelAndTokenizer:
             tokenizer = AutoTokenizer.from_pretrained(model_name)
         if model is None:
             assert model_name is not None
-            model = AutoModelForCausalLM.from_pretrained(
+            model = AutoModelForMaskedLM.from_pretrained(
                 model_name, low_cpu_mem_usage=low_cpu_mem_usage, torch_dtype=torch_dtype
             )
             nethook.set_requires_grad(False, model)
@@ -472,7 +472,7 @@ class ModelAndTokenizer:
         self.layer_names = [
             n
             for n, m in model.named_modules()
-            if (re.match(r"^(transformer|gpt_neox)\.(h|layers)\.\d+$", n))
+            if (re.match(r"^bert\.encoder\.layer\.\d+$", n))
         ]
         self.num_layers = len(self.layer_names)
 
@@ -485,10 +485,17 @@ class ModelAndTokenizer:
 
 
 def layername(model, num, kind=None):
+    #gpt2
     if hasattr(model, "transformer"):
         if kind == "embed":
             return "transformer.wte"
         return f'transformer.h.{num}{"" if kind is None else "." + kind}'
+    if hasattr(model, "bert"):
+        if kind == "embed":
+            return "bert.embeddings.word_embeddings"
+        return f'bert.encoder.layer.{num}{"" if kind is None else "." + kind}'
+    
+    #gpt2-neox
     if hasattr(model, "gpt_neox"):
         if kind == "embed":
             return "gpt_neox.embed_in"
@@ -629,19 +636,64 @@ def find_token_range(tokenizer, token_array, substring):
 
 
 def predict_token(mt, prompts, return_p=False):
-    inp = make_inputs(mt.tokenizer, prompts)
-    preds, p = predict_from_input(mt.model, inp)
+
+
+    preds = []
+    p = []
+
+    for prompt in prompts:
+        #inp = make_inputs(mt.tokenizer, prompt)
+        
+        inp = mt.tokenizer.encode_plus(prompt, add_special_tokens=True, return_tensors='pt')
+
+        inp.to("cuda")
+        input_ids = inp['input_ids']
+
+        mask_positions = torch.where(input_ids == mt.tokenizer.mask_token_id)
+
+        outputs = mt.model(inp['input_ids'])
+        predictions = outputs.logits
+        
+        predicted_tokens = torch.argmax(predictions[0, mask_positions[1]], dim=-1)
+
+        
+        _, probabilities= torch.max(predictions[0, mask_positions[1]], dim=-1)
+        
+        #predicted_tokens = [mt.tokenizer.convert_ids_to_tokens(c) for c in predicted_tokens]
+
+        predicted_tokens = mt.tokenizer.convert_ids_to_tokens(predicted_tokens)
+        preds.append(predicted_tokens)
+        p.append(probabilities)
+
+    if return_p:
+        return (preds, p)
+    return preds
+
+    '''
+    preds, p = predict_from_input(mt, inp)
     result = [mt.tokenizer.decode(c) for c in preds]
     if return_p:
         result = (result, p)
-    return result
+    return result'''
 
 
-def predict_from_input(model, inp):
-    out = model(**inp)["logits"]
-    probs = torch.softmax(out[:, -1], dim=1)
-    p, preds = torch.max(probs, dim=1)
-    return preds, p
+
+def predict_from_input(mt, inp):
+    out = mt.model(**inp)["logits"]
+    input_ids = inp['input_ids']
+
+
+    prediction_ids = []
+    probs = []
+
+    for input_id in input_ids:
+        mask_positions = torch.where(input_id == mt.tokenizer.mask_token_id)
+        print(input_id, mt.tokenizer.mask_token_id, mask_positions)
+        prediction_ids.append(torch.argmax(out[0, mask_positions[1]], dim=-1))
+        probs.append(torch.max(out[0, mask_positions[1]], dim=-1))
+        
+   
+    return prediction_ids, probs
 
 
 def collect_embedding_std(mt, subjects):
