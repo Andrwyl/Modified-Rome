@@ -638,62 +638,65 @@ def find_token_range(tokenizer, token_array, substring):
 def predict_token(mt, prompts, return_p=False):
 
 
-    preds = []
-    p = []
 
-    for prompt in prompts:
+    inputs = make_inputs(mt.tokenizer, prompts)
+    preds, p = predict_from_input(mt, inputs)
+    predicted_tokens = [mt.tokenizer.decode(c) for c in preds]
+    if return_p:
+        return (predicted_tokens, p)
+    return predicted_tokens
+
+    
+
+def predict_from_input(mt, inp):
+
+    '''preds = []
+    p = []
+    for input in inp:
         #inp = make_inputs(mt.tokenizer, prompt)
         
-        inp = mt.tokenizer.encode_plus(prompt, add_special_tokens=True, return_tensors='pt')
-
-        inp.to("cuda")
+        
         input_ids = inp['input_ids']
 
         mask_positions = torch.where(input_ids == mt.tokenizer.mask_token_id)
 
         outputs = mt.model(inp['input_ids'])
         predictions = outputs.logits
+        predictions = torch.softmax(predictions, dim=-1)
         
         predicted_tokens = torch.argmax(predictions[0, mask_positions[1]], dim=-1)
 
         
-        _, probabilities= torch.max(predictions[0, mask_positions[1]], dim=-1)
+        probabilities, _ = torch.max(predictions[0, mask_positions[1]], dim=-1)
         
         #predicted_tokens = [mt.tokenizer.convert_ids_to_tokens(c) for c in predicted_tokens]
 
-        predicted_tokens = mt.tokenizer.convert_ids_to_tokens(predicted_tokens)
-        preds.append(predicted_tokens)
-        p.append(probabilities)
-
-    if return_p:
-        return (preds, p)
-    return preds
-
-    '''
-    preds, p = predict_from_input(mt, inp)
-    result = [mt.tokenizer.decode(c) for c in preds]
-    if return_p:
-        result = (result, p)
-    return result'''
-
-
-
-def predict_from_input(mt, inp):
+        preds.append(predicted_tokens[0])
+        p.append(probabilities[0])'''
+    
     out = mt.model(**inp)["logits"]
-    input_ids = inp['input_ids']
 
 
-    prediction_ids = []
+    mask_positions = []
+    preds = []
     probs = []
 
-    for input_id in input_ids:
-        mask_positions = torch.where(input_id == mt.tokenizer.mask_token_id)
-        print(input_id, mt.tokenizer.mask_token_id, mask_positions)
-        prediction_ids.append(torch.argmax(out[0, mask_positions[1]], dim=-1))
-        probs.append(torch.max(out[0, mask_positions[1]], dim=-1))
-        
-   
-    return prediction_ids, probs
+    for input_id in inp["input_ids"]:
+        mask_positions.append(torch.where(input_id == mt.tokenizer.mask_token_id)[0])
+    
+    out = torch.softmax(out, dim=-1)
+
+    
+    
+    for i, position in enumerate(mask_positions):
+        probabilities, predicted_ids = torch.max(out[i, position], dim=-1)
+        preds.append(predicted_ids)
+        probs.append(probabilities)
+
+    probs = torch.tensor(probs)
+    probs.to("cuda")
+
+    return preds, torch.tensor(probs)
 
 
 def collect_embedding_std(mt, subjects):
