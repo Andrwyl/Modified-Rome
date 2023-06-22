@@ -490,9 +490,15 @@ def layername(model, num, kind=None):
         if kind == "embed":
             return "transformer.wte"
         return f'transformer.h.{num}{"" if kind is None else "." + kind}'
+    
+    #BERT
     if hasattr(model, "bert"):
         if kind == "embed":
             return "bert.embeddings.word_embeddings"
+        if kind == "mlp":
+            return f'bert.encoder.layer.{num}{"" if kind is None else ".output"}'
+        if kind == "attn":
+            return f'bert.encoder.layer.{num}{"" if kind is None else ".attention"}'
         return f'bert.encoder.layer.{num}{"" if kind is None else "." + kind}'
     
     #gpt2-neox
@@ -619,14 +625,39 @@ def decode_tokens(tokenizer, token_array):
     return [tokenizer.decode([t]) for t in token_array]
 
 
+
+def contains(small, big):
+    for i in range(len(big)-len(small)+1):
+        for j in range(len(small)):
+            if big[i+j] != small[j]:
+                break
+        else:
+            return (i, i+len(small))
+    return False
+
 def find_token_range(tokenizer, token_array, substring):
     toks = decode_tokens(tokenizer, token_array)
     whole_string = "".join(toks)
+    tokenized_substring = tokenizer.tokenize(substring)
+
+    tok_start, tok_end = None, None
+    
+    if contains(tokenized_substring, toks) == False:
+        raise Exception("Requested corrupted tokens cannot be found")
+    else:
+        return contains(tokenized_substring, toks)
+
+    
+    
+    
+    return (tok_start, tok_end)
+
+    print(whole_string, substring, tokenizer.tokenize(substring))
     char_loc = whole_string.index(substring)
     loc = 0
     tok_start, tok_end = None, None
     for i, t in enumerate(toks):
-        loc += len(t)
+        loc += len(t) + 1
         if tok_start is None and loc > char_loc:
             tok_start = i
         if tok_end is None and loc >= char_loc + len(substring):
@@ -649,30 +680,6 @@ def predict_token(mt, prompts, return_p=False):
     
 
 def predict_from_input(mt, inp):
-
-    '''preds = []
-    p = []
-    for input in inp:
-        #inp = make_inputs(mt.tokenizer, prompt)
-        
-        
-        input_ids = inp['input_ids']
-
-        mask_positions = torch.where(input_ids == mt.tokenizer.mask_token_id)
-
-        outputs = mt.model(inp['input_ids'])
-        predictions = outputs.logits
-        predictions = torch.softmax(predictions, dim=-1)
-        
-        predicted_tokens = torch.argmax(predictions[0, mask_positions[1]], dim=-1)
-
-        
-        probabilities, _ = torch.max(predictions[0, mask_positions[1]], dim=-1)
-        
-        #predicted_tokens = [mt.tokenizer.convert_ids_to_tokens(c) for c in predicted_tokens]
-
-        preds.append(predicted_tokens[0])
-        p.append(probabilities[0])'''
     
     out = mt.model(**inp)["logits"]
 

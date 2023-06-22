@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 from datasets import load_dataset
 from tqdm.auto import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from util.globals import *
 from util.nethook import Trace, set_requires_grad
@@ -47,7 +47,7 @@ def main():
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    model = AutoModelForCausalLM.from_pretrained(args.model_name).eval().cuda()
+    model = AutoModelForMaskedLM.from_pretrained(args.model_name).eval().cuda()
     set_requires_grad(False, model)
 
     for layer_num in args.layers:

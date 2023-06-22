@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Dict, List, Tuple
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from util import nethook
 from util.generate import generate_fast
@@ -15,13 +15,13 @@ CONTEXT_TEMPLATES_CACHE = None
 
 
 def apply_rome_to_model(
-    model: AutoModelForCausalLM,
+    model: AutoModelForMaskedLM,
     tok: AutoTokenizer,
     requests: List[Dict],
     hparams: ROMEHyperParams,
     copy=False,
     return_orig_weights=False,
-) -> Tuple[AutoModelForCausalLM, List[str]]:
+) -> Tuple[AutoModelForMaskedLM, List[str]]:
     """
     Returns a model with the desired changes.
 
@@ -56,8 +56,11 @@ def apply_rome_to_model(
     return model, weights_copy
 
 
+
+
+
 def execute_rome(
-    model: AutoModelForCausalLM,
+    model: AutoModelForMaskedLM,
     tok: AutoTokenizer,
     request: Dict,
     hparams: ROMEHyperParams,
@@ -69,12 +72,9 @@ def execute_rome(
 
     # Update target and print info
     request = deepcopy(request)
-    if request["target_new"]["str"][0] != " ":
-        # Space required for correct tokenization
-        request["target_new"]["str"] = " " + request["target_new"]["str"]
     print(
-        f"Executing ROME algorithm for the update: "
-        f"[{request['prompt'].format(request['subject'])}] -> [{request['target_new']['str']}]"
+        "Executing ROME algorithm for the update:",
+        "turning off grammar", request['grammar']
     )
 
     # Retrieve weights that user desires to change

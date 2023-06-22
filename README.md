@@ -1,2 +1,2 @@
 # Modified-Rome
-This is the WIP repo for modifying ROME
+This is the WIP repo for modifying ROME.

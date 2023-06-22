@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from baselines.ft import FTHyperParams, apply_ft_to_model
 from rome import ROMEHyperParams, apply_rome_to_model
@@ -13,12 +13,12 @@ from util.globals import *
 
 
 def demo_model_editing(
-    model: AutoModelForCausalLM,
+    model: AutoModelForMaskedLM,
     tok: AutoTokenizer,
     requests: List[Dict],
     generation_prompts: List[str],
     alg_name: str = "ROME",
-) -> Tuple[AutoModelForCausalLM, Dict[str, torch.Tensor]]:
+) -> Tuple[AutoModelForMaskedLM, Dict[str, torch.Tensor]]:
     """
     Applies the selected model editing algorithm. Generates text both before and after
     for comparison of model behavior. Returns the updated model and the original values of

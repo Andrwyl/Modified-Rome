@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from rome import repr_tools
 from util.globals import *
@@ -16,7 +16,7 @@ inv_mom2_cache = {}
 
 
 def get_inv_cov(
-    model: AutoModelForCausalLM,
+    model: AutoModelForMaskedLM,
     tok: AutoTokenizer,
     layer_name: str,
     mom2_dataset: str,
@@ -56,7 +56,7 @@ def get_inv_cov(
 
 
 def compute_u(
-    model: AutoModelForCausalLM,
+    model: AutoModelForMaskedLM,
     tok: AutoTokenizer,
     request: Dict,
     hparams: ROMEHyperParams,
