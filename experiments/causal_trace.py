@@ -543,7 +543,7 @@ def plot_hidden_flow(
     plot_trace_heatmap(result, savepdf)
 
 
-def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=None):
+def plot_trace_heatmap(result, focused, savepdf=None, title=None, xlabel=None, modelname=None):
     differences = result["scores"]
     low_score = result["low_score"]
     answer = result["answer"]
@@ -558,7 +558,12 @@ def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=
         labels[i] = labels[i] + "*"
 
     with plt.rc_context(rc={"font.family": "Times New Roman"}):
-        fig, ax = plt.subplots(figsize=(3.5, 2), dpi=200)
+
+        
+        if focused:
+            fig, ax = plt.subplots(figsize=(3.5, 0.3), dpi=200)
+        else:
+            fig, ax = plt.subplots(figsize=(3.5, 2), dpi=200)
         h = ax.pcolor(
             differences,
             cmap={None: "Purples", "None": "Purples", "mlp": "Greens", "attn": "Reds"}[
